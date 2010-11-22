@@ -1,0 +1,62 @@
+<?php
+/**
+ * $Id$
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function hosting_backup_storage_install() {
+  drupal_install_schema('hosting_backup_storage');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function hosting_backup_storage_uninstall() {
+  drupal_uninstall_schema('hosting_backup_storage');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function hosting_backup_storage_schema() {
+  $schema = array();
+
+  $schema['hosting_backup_storage_s3'] = array(
+    'fields' => array(
+      'vid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'aws_key' => array(
+        'type' => 'varchar',
+        // TODO: This can probably be shorter?
+        'length' => 128,
+        'not null' => TRUE,
+      ),
+      'aws_private' => array(
+        'type' => 'varchar',
+        // TODO: This can probably be shorter?
+        'length' => 128,
+        'not null' => TRUE,
+      ),
+      'aws_bucket' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+    ),
+    'indexes' => array(
+      'vid' => array('vid'),
+    ),
+  );
+
+  return $schema;
+}
