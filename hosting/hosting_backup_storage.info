@@ -1,0 +1,6 @@
+name = Hosting backup storage
+description = Allows backups to be stored in various places.
+package = Hosting
+dependencies[] = hosting
+
+core = 6.x
