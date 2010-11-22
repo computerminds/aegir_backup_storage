@@ -1,4 +1,4 @@
-name = Hosting backup storage
+name = Backup storage
 description = Allows backups to be stored in various places.
 package = Hosting
 dependencies[] = hosting
