@@ -36,6 +36,18 @@ function hosting_backup_storage_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'location_id' => array(
+        'type' => 'varchar',
+        // TODO: This can probably be shorter?
+        'length' => 128,
+        'not null' => TRUE,
+      ),
+      'location_name' => array(
+        'type' => 'varchar',
+        // TODO: This can probably be shorter?
+        'length' => 128,
+        'not null' => TRUE,
+      ),
       'aws_key' => array(
         'type' => 'varchar',
         // TODO: This can probably be shorter?
@@ -58,5 +70,108 @@ function hosting_backup_storage_schema() {
     ),
   );
 
+  $schema['hosting_site_backup_storage'] = array(
+    'fields' => array(
+      'vid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'backup_storage_server' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'location_id' => array(
+        'type' => 'varchar',
+        // TODO: This can probably be shorter?
+        'length' => 128,
+        'not null' => TRUE,
+      ),
+    ),
+    'indexes' => array(
+      'vid' => array('vid'),
+    ),
+  );
+
+
   return $schema;
+}
+
+/**
+ * Implementation of hook_update_N().
+ */
+function hosting_backup_storage_update_6100() {
+  $ret = array();
+
+  $fields['location_id'] = array(
+    'type' => 'varchar',
+    // TODO: This can probably be shorter?
+    'length' => 128,
+    'not null' => TRUE,
+  );
+  $fields['location_name'] = array(
+    'type' => 'varchar',
+    // TODO: This can probably be shorter?
+    'length' => 128,
+    'not null' => TRUE,
+  );
+
+  foreach ($fields as $name => $field) {
+    db_add_field($ret, 'hosting_backup_storage_s3', $name, $field);
+  }
+
+
+  return $ret;
+}
+
+/**
+ * Implementation of hook_update_N().
+ */
+function hosting_backup_storage_update_6101() {
+  $ret = array();
+
+  $schema['hosting_site_backup_storage'] = array(
+    'fields' => array(
+      'vid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'backup_storage_server' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'location_id' => array(
+        'type' => 'varchar',
+        // TODO: This can probably be shorter?
+        'length' => 128,
+        'not null' => TRUE,
+      ),
+    ),
+    'indexes' => array(
+      'vid' => array('vid'),
+    ),
+  );
+
+  foreach ($schema as $name => $spec) {
+    db_create_table($ret, $name, $spec);
+  }
+
+  return $ret;
 }

@@ -42,3 +42,145 @@ function hosting_backup_storage_hosting_service_type() {
 function hosting_backup_storage_hosting_service() {
   return array('s3' => 'backup_storage');
 }
+
+/**
+ * Implementation of hook_form_alter()
+ */
+function hosting_backup_storage_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'site_node_form') {
+
+    $node = $form['#node'];
+
+    $configurable_locations = FALSE;
+    // Only allow the user to modify these values when the platform is SSL enabled.
+    if ($node->nid) {
+      $storage_server = node_load($node->backup_storage_server);
+
+      if ($storage_server->services['backup_storage']->configurable_locations) {
+        $configurable_locations = TRUE;
+      }
+    }
+
+    _hosting_site_field($form, $node, 'backup_storage_server', array(
+        '#type' => 'radios',
+        '#title' => t('Backup storage server'),
+        '#required' => TRUE,
+        '#description' => t('The backup storage server the site will use.'),
+        '#options' => hosting_get_servers('backup_storage'),
+        '#default_value' => $node->backup_storage_server ? $node->backup_storage_server : HOSTING_DEFAULT_DB_SERVER,
+      ), '_hosting_node_link');
+
+    _hosting_site_field($form, $node, 'backup_storage_location_id', array(
+      '#type' => 'radios',
+      '#title' => t('Backup storage location'),
+      '#description' => t("Choose a location to store backups in."),
+      '#options' => hosting_backup_storage_get_locations(),
+      '#required' => FALSE,
+      '#default_value' => ($node->backup_storage_location_id) ? $node->backup_storage_location_id : '',
+      //'#access' => user_access('administer ssl'),
+      /*'#weight' => -8*/
+    ), 'filter_xss', $configurable_locations, !$node->nid);
+
+    return $form;
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi()
+ */
+function hosting_backup_storage_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  if ($node->type == 'site') {
+    switch ($op) {
+    case 'insert':
+        hosting_backup_storage_insert($node);
+        break;
+      case 'update':
+        hosting_backup_storage_update($node);
+        break;
+      case 'delete' :
+        hosting_backup_storage_delete($node);
+        break;
+      case 'delete revision':
+        hosting_backup_storage_delete_revision($node);
+        break;
+      case 'validate' :
+        //if (!empty($node->http_basic_auth_username) && empty($node->http_basic_auth_password)) {
+        //  form_set_error('http_basic_auth_password', t('You must specify a password for the HTTP basic authentication.'));
+        //}
+        break;
+      case 'load':
+        $additions = db_fetch_array(db_query("SELECT backup_storage_server, location_id AS backup_storage_location_id FROM {hosting_site_backup_storage} WHERE vid = %d", $node->vid));
+        return $additions;
+        break;
+    }
+  }
+}
+
+/**
+ * Implementation of hook_insert()
+ */
+function hosting_backup_storage_insert($node) {
+  db_query("INSERT INTO {hosting_site_backup_storage} (vid, nid, backup_storage_server, location_id) VALUES (%d, %d, '%s', '%s')", $node->vid, $node->nid, $node->backup_storage_server, $node->backup_storage_location_id);
+}
+
+/**
+ * Implementation of hook_update()
+ */
+function hosting_backup_storage_update($node) {
+  hosting_backup_storage_delete_revision($node);
+  hosting_backup_storage_insert($node);
+}
+
+/**
+ * Implementation of hook_delete()
+ */
+function hosting_backup_storage_delete($node) {
+  db_query("DELETE FROM {hosting_site_backup_storage} WHERE nid=%d", $node->nid);
+}
+
+/**
+ * Implementation of hook_delete_revision()
+ */
+function hosting_backup_storage_delete_revision($node) {
+  db_query("DELETE FROM {hosting_site_backup_storage} WHERE vid=%d", $node->vid);
+}
+
+function hosting_backup_storage_get_locations($server = NULL) {
+  $locations = array();
+  $query = "SELECT location_id, location_name FROM {hosting_backup_storage_s3}";
+  $args = array();
+
+  if (!empty($server)) {
+    $query .= " WHERE nid = %d";
+    $args[] = $server;
+  }
+
+  $result = db_query($query, $args);
+  while ($row = db_fetch_object($result)) {
+    $locations[$row->location_id] = $row->location_name;
+  }
+
+  return $locations;
+}
+
+
+function hosting_backup_storage_hosting_site_options_alter(&$return, $node) {
+
+  $return['backup_storage_location_id'] = false;
+
+  // Test if ssl has been enabled.
+  if ($node->backup_storage_server != 0) {
+
+    $keys = hosting_backup_storage_get_locations($node->backup_storage_server);
+
+    // return the list of valid keys
+    $return['backup_storage_location_id'] = array_keys($keys);
+  }
+}
+
+/**
+ * Return a list of servers which have SSL enabled web services.
+ */
+function hosting_backup_storage_get_servers() {
+  return hosting_get_servers('backup_storage');
+}
