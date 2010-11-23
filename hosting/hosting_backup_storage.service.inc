@@ -151,7 +151,7 @@ class hostingService_backup_storage_s3 extends hostingService_backup_storage {
 
       $locations = explode("\n", $this->backup_storage_locations);
       foreach ($locations as $location) {
-        $location = explode('|', $location);
+        $location = explode('|', trim($location));
         $location = array_merge(array($this->server->nid, $this->server->vid), $location);
         db_query("INSERT INTO {hosting_backup_storage_s3} (nid, vid, location_id, location_name, aws_key, aws_private, aws_bucket) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s')", $location);
       }

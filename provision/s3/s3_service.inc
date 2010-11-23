@@ -7,6 +7,8 @@
   *   A 'basic' implementation of the 'example' service type.
   */
 
+include_once(dirname(__FILE__) . '/includes/S3.php');
+
 /**
  * A class containing the 'basic' implementation of the 'example' service.
  *
@@ -37,22 +39,103 @@ class provisionService_backup_storage_s3 extends provisionService_backup_storage
   }
 
   function store_backup($filename) {
+    dlm(d());
     dlm('Store the backup ' . $filename . ' in S3: ' . d()->backup_storage_location_id);
-    rename($filename, $filename . '.s3');
-    return TRUE;
+    if (d(d()->backup_storage_server)->service('backup_storage')->store_object(d()->backup_storage_location_id, $filename)) {
+      dlm('Backup completed!');
+      return TRUE;
+    }
+
+  }
+
+  function delete_backup($filename) {
+    dlm('Delete the backup ' . $filename . ' in S3: ' . d()->backup_storage_location_id);
+    if (d(d()->backup_storage_server)->service('backup_storage')->remove_object(d()->backup_storage_location_id, $filename)) {
+      dlm('Backup delete completed!');
+      return TRUE;
+    }
+
   }
 
   function retrieve_backup($filename) {
     dlm('Get the backup file: ' . $filename);
-    if (file_exists($filename . '.s3')) {
-      rename($filename . '.s3', $filename);
-      return TRUE;
+    if (!file_exists($filename)) {
+      // Try to get the file from S3
+      if (d(d()->backup_storage_server)->service('backup_storage')->get_object(d()->backup_storage_location_id, $filename)) {
+        dlm('Restore completed!');
+        return TRUE;
+      }
+
     }
 
-    dlm('Could not locate the backup file.');
 
 
     return FALSE;
+  }
+
+  function get_location($location_id) {
+    if (isset($this->context->backup_storage_locations[$location_id])) {
+      return $this->context->backup_storage_locations[$location_id];
+    }
+    else {
+      return FALSE;
+    }
+  }
+
+  function get_s3_object($spec = array()) {
+    $s3 = new S3($spec['aws_key'], $spec['aws_private']);
+    list($bucket_name, ) = explode('/', $spec['aws_bucket'], 2);
+    if ($s3->getBucket($bucket_name) !== FALSE) {
+      return $s3;
+    }
+  }
+
+  function store_object($location_id, $filename) {
+    $location = $this->get_location($location_id);
+
+    if ($s3 = $this->get_s3_object($location)) {
+      $uri = '';
+      $location['aws_bucket'] = str_replace('[uri]', d()->uri, $location['aws_bucket']);
+      list($bucket_name, $uri) = explode('/', $location['aws_bucket'], 2);
+      $uri = rtrim($uri, '/');
+      $uri .= '/' . basename($filename);
+      $uri = ltrim($uri, '/');
+      dlm('$s3->putObject(S3::inputFile(\'' . $filename . '\'), \'' . $bucket_name . '\', \'' . $uri . '\')');
+      return $s3->putObject(S3::inputFile($filename), $bucket_name, $uri);
+    }
+
+  }
+
+  function get_object($location_id, $filename) {
+    $location = $this->get_location($location_id);
+
+    if ($s3 = $this->get_s3_object($location)) {
+      $uri = '';
+      $location['aws_bucket'] = str_replace('[uri]', d()->uri, $location['aws_bucket']);
+      list($bucket_name, $uri) = explode('/', $location['aws_bucket'], 2);
+      $uri = rtrim($uri, '/');
+      $uri .= '/' . basename($filename);
+      $uri = ltrim($uri, '/');
+      dlm('$s3->getObject(\'' . $bucket_name . '\', \'' . $uri . '\', \'' . $filename . '\')');
+      return $s3->getObject($bucket_name, $uri, $filename);
+    }
+
+  }
+
+  function remove_object($location_id, $filename) {
+    $location = $this->get_location($location_id);
+
+    if ($s3 = $this->get_s3_object($location)) {
+      $uri = '';
+      $location['aws_bucket'] = str_replace('[uri]', d()->uri, $location['aws_bucket']);
+      list($bucket_name, $uri) = explode('/', $location['aws_bucket'], 2);
+      $uri = rtrim($uri, '/');
+      $uri .= '/' . basename($filename);
+      $uri = ltrim($uri, '/');
+      dlm('$s3->deleteObject(\'' . $bucket_name . '\', \'' . $uri . '\')');
+      return $s3->deleteObject($bucket_name, $uri);
+    }
+
   }
 
 }
