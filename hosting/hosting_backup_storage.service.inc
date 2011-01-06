@@ -5,11 +5,13 @@
 
 /**
  * @file
- *   Example service implementation for the hosting front end.
+ *   Backup storage service implementation.
  */
 
 /**
- * The base service type class , registered with hook_hosting_service_type.
+ * Hosting backup storage class that provides options for backup storage.
+ *
+ * The base service type class, registered with hook_hosting_service_type.
  */
 class hostingService_backup_storage extends hostingService {
  /**
@@ -17,23 +19,23 @@ class hostingService_backup_storage extends hostingService {
  */
   public $service = 'backup_storage';
 
-  public $configurable_locations = FALSE;
-}
-
-
-
-/**
- * An implementation of the backup_storage service type, registered with hook_hosting_service.
- */
-class hostingService_backup_storage_s3 extends hostingService_backup_storage {
- /**
-  *   the value stored in the type column of the hosting_service table.
-  */
-  public $type = 's3';
-
   public $locations = array();
 
   public $configurable_locations = TRUE;
+
+  /**
+   * Return the locations in a string form for editing by the user.
+   */
+  function get_locations_string() {
+    return '';
+  }
+
+  /**
+   * Returns the backup locations in a pretty format.
+   */
+  function get_locations_pretty() {
+    return '';
+  }
 
   /**
    * Load associated values for the service.
@@ -41,10 +43,6 @@ class hostingService_backup_storage_s3 extends hostingService_backup_storage {
   function load() {
     // REMEMBER TO CALL THE PARENT!
     parent::load();
-    $result = db_query("SELECT location_id, location_name, aws_key, aws_private, aws_bucket FROM {hosting_backup_storage_s3} WHERE vid = %d", $this->server->vid);
-    while ($row = db_fetch_array($result)) {
-      $this->locations[$row['location_id']] = $row;
-    }
   }
 
   /**
@@ -60,13 +58,15 @@ class hostingService_backup_storage_s3 extends hostingService_backup_storage {
   function view(&$render) {
     // REMEMBER TO CALL THE PARENT!
     parent::view($render);
-    $render['backup_storage'] = array(
-      '#type' => 'item',
-      '#title' => t('Backup locations'),
+    if ($this->configurable_locations) {
+      $render['backup_storage'] = array(
+        '#type' => 'item',
+        '#title' => t('Backup locations'),
 
-      // Remember to pass the display through filter_xss!
-      '#value' => $this->get_locations_pretty(),
-    );
+        // Remember to pass the display through filter_xss!
+        '#value' => $this->get_locations_pretty(),
+      );
+    }
   }
 
   /**
@@ -85,21 +85,97 @@ class hostingService_backup_storage_s3 extends hostingService_backup_storage {
 
     // TODO: Improve this UI.
 
-    $form['backup_storage_locations'] = array(
-      '#type' => 'textarea',
-      '#title' => t('Backup locations'),
-      '#description' => t('A list of backup locations in the following format:<br />Machine name|Friendly name|AWS Key|AWS Private|Bucket name'),
-      //'#size' => 40,
-      '#default_value' => $this->get_locations_string(),
-      //'#maxlength' => 64,
-      '#rows' => 5,
-      //'#weight' => 5,
-    );
+    if ($this->configurable_locations) {
+      $form['backup_storage_locations'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Backup locations'),
+        '#description' => t('A list of backup locations.'),
+        //'#size' => 40,
+        '#default_value' => $this->get_locations_string(),
+        //'#maxlength' => 64,
+        '#rows' => 5,
+        //'#weight' => 5,
+      );
+    }
   }
 
   /**
    * Validate a form submission.
    */
+  function validate(&$node, &$form) {
+    // REMEMBER TO CALL THE PARENT!
+    parent::validate($node, $form);
+
+  }
+
+  /**
+  * Insert a record into the database.
+  *
+  * Called by hosting_server_hook_insert().
+  *
+  * The values associated with this implementation have already
+  * been set as properties of $this object, so we now need to
+  * save them.
+  */
+  function insert() {
+    // REMEMBER TO CALL THE PARENT!
+    parent::insert();
+    $this->update_actual();
+  }
+
+  function update() {
+    if (isset($this->backup_storage_locations)) {
+      $this->delete_revision();
+      $this->insert();
+    }
+  }
+
+  function update_actual() {
+
+  }
+
+  function delete() {
+    // REMEMBER TO CALL THE PARENT!
+    parent::delete();
+
+  }
+
+  /**
+   * Delete a specific reivision from the database.
+   */
+  function delete_revision() {
+    // REMEMBER TO CALL THE PARENT!
+    parent::delete_revision();
+
+  }
+}
+
+
+/**
+ * An implementation of the backup_storage service type, registered with hook_hosting_service.
+ */
+class hostingService_backup_storage_s3 extends hostingService_backup_storage {
+ /**
+  *   the value stored in the type column of the hosting_service table.
+  */
+  public $type = 's3';
+
+  function load() {
+    // REMEMBER TO CALL THE PARENT!
+    parent::load();
+    $result = db_query("SELECT location_id, location_name, aws_key, aws_private, aws_bucket FROM {hosting_backup_storage_s3} WHERE vid = %d", $this->server->vid);
+    while ($row = db_fetch_array($result)) {
+      $this->locations[$row['location_id']] = $row;
+    }
+  }
+
+  function form(&$form) {
+    // REMEMBER TO CALL THE PARENT!
+    parent::form($form);
+
+    $form['backup_storage_locations']['#description'] = t('A list of backup locations in the following format:<br />Machine name|Friendly name|AWS Key|AWS Private|Bucket name');
+  }
+
   function validate(&$node, &$form) {
     // REMEMBER TO CALL THE PARENT!
     parent::validate($node, $form);
@@ -120,33 +196,8 @@ class hostingService_backup_storage_s3 extends hostingService_backup_storage {
     }
   }
 
-  /**
-  * Insert a record into the database.
-  *
-  * Called by hosting_server_hook_insert().
-  *
-  * The values associated with this implementation have already
-  * been set as properties of $this object, so we now need to
-  * save them.
-  *
-  * For this example we will use the variables table, but you should
-  * create your own tables with an install file and hook_schema.
-  */
-  function insert() {
-    // REMEMBER TO CALL THE PARENT!
-    parent::insert();
-    $this->update_actual();
-  }
-
-  function update() {
-    if (!empty($this->backup_storage_locations)) {
-      $this->delete_revision();
-      $this->insert();
-    }
-  }
-
   function update_actual() {
-    if (!empty($this->backup_storage_locations)) {
+    if (isset($this->backup_storage_locations)) {
       db_query('DELETE FROM {hosting_backup_storage_s3} WHERE vid = %d', $this->server->vid);
 
       $locations = explode("\n", $this->backup_storage_locations);
@@ -158,25 +209,22 @@ class hostingService_backup_storage_s3 extends hostingService_backup_storage {
     }
   }
 
-  /**
-   * Delete a record from the database, based on server node.
-   */
-   function delete() {
+  function delete() {
     // REMEMBER TO CALL THE PARENT!
     parent::delete();
 
     db_query('DELETE FROM {hosting_backup_storage_s3} WHERE nid = %d', $this->server->nid);
-   }
+  }
 
   /**
    * Delete a specific reivision from the database.
    */
-   function delete_revision() {
-      // REMEMBER TO CALL THE PARENT!
-     parent::delete_revision();
+  function delete_revision() {
+    // REMEMBER TO CALL THE PARENT!
+    parent::delete_revision();
 
-     db_query('DELETE FROM {hosting_backup_storage_s3} WHERE vid = %d', $this->server->vid);
-   }
+    db_query('DELETE FROM {hosting_backup_storage_s3} WHERE vid = %d', $this->server->vid);
+  }
 
   function get_locations_string() {
     $locs = array();
@@ -193,10 +241,6 @@ class hostingService_backup_storage_s3 extends hostingService_backup_storage {
     return implode("\n", $locs);
   }
 
-  /**
-   * Returns the backups locations in a pretty format.
-   *
-   */
   function get_locations_pretty() {
     $locs = array();
     foreach ($this->locations as $location) {
