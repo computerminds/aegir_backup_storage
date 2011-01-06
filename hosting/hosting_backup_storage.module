@@ -52,8 +52,7 @@ function hosting_backup_storage_form_alter(&$form, $form_state, $form_id) {
     $node = $form['#node'];
 
     $configurable_locations = FALSE;
-    // Only allow the user to modify these values when the platform is SSL enabled.
-    if ($node->nid) {
+    if ($node->nid && !empty($node->backup_storage_server)) {
       $storage_server = node_load($node->backup_storage_server);
 
       if ($storage_server->services['backup_storage']->configurable_locations) {
@@ -66,9 +65,9 @@ function hosting_backup_storage_form_alter(&$form, $form_state, $form_id) {
         '#title' => t('Backup storage server'),
         '#required' => TRUE,
         '#description' => t('The backup storage server the site will use.'),
-        '#options' => hosting_get_servers('backup_storage'),
-        '#default_value' => $node->backup_storage_server ? $node->backup_storage_server : HOSTING_DEFAULT_DB_SERVER,
-      ), '_hosting_node_link');
+        '#options' => array('' => t('None')) + hosting_get_servers('backup_storage'),
+        '#default_value' => $node->backup_storage_server ? $node->backup_storage_server : '',
+      ), '_hosting_node_link', !$node->nid || empty($node->backup_storage_server));
 
     _hosting_site_field($form, $node, 'backup_storage_location_id', array(
       '#type' => 'radios',
@@ -167,8 +166,7 @@ function hosting_backup_storage_get_locations($server = NULL) {
 function hosting_backup_storage_hosting_site_options_alter(&$return, $node) {
 
   $return['backup_storage_location_id'] = false;
-
-  // Test if ssl has been enabled.
+  dsm($node);
   if ($node->backup_storage_server != 0) {
 
     $keys = hosting_backup_storage_get_locations($node->backup_storage_server);
