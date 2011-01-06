@@ -166,7 +166,6 @@ function hosting_backup_storage_get_locations($server = NULL) {
 function hosting_backup_storage_hosting_site_options_alter(&$return, $node) {
 
   $return['backup_storage_location_id'] = false;
-  dsm($node);
   if ($node->backup_storage_server != 0) {
 
     $keys = hosting_backup_storage_get_locations($node->backup_storage_server);
