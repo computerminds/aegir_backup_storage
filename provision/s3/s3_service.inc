@@ -56,7 +56,7 @@ class provisionService_backup_storage_s3 extends provisionService_backup_storage
     $location = $this->get_location($location_id);
 
     if ($s3 = $this->s3_bucket_factory($location)) {
-      $target = s3_compute_bucket_name_and_uri($location, $filename);
+      $target = $this->s3_compute_bucket_name_and_uri($location, $filename);
       return $s3->putObject(S3::inputFile($filename), $target['bucket_name'], $target['uri']);
     }
 
@@ -69,7 +69,7 @@ class provisionService_backup_storage_s3 extends provisionService_backup_storage
     $location = $this->get_location($location_id);
 
     if ($s3 = $this->s3_bucket_factory($location)) {
-      $target = s3_compute_bucket_name_and_uri($location, $filename);
+      $target = $this->s3_compute_bucket_name_and_uri($location, $filename);
       return $s3->getObject($target['bucket_name'], $target['uri'], $filename);
     }
   }
@@ -81,7 +81,7 @@ class provisionService_backup_storage_s3 extends provisionService_backup_storage
     $location = $this->get_location($location_id);
 
     if ($s3 = $this->s3_bucket_factory($location)) {
-      $target = s3_compute_bucket_name_and_uri($location, $filename);
+      $target = $this->s3_compute_bucket_name_and_uri($location, $filename);
       return $s3->deleteObject($target['bucket_name'], $target['uri']);
     }
 
